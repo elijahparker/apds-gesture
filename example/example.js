@@ -1,6 +1,6 @@
 // example for the apds gesture sensor
 var GestureLib = require('../');
-var G_THRESHOLD = 10,
+var G_THRESHOLD = 40,
     G_SENSITIVITY = 1 //0.65
 ;
 
@@ -9,14 +9,12 @@ var gesture = GestureLib.use('/dev/i2c-2', {
     'sensitivity': G_SENSITIVITY
 });
 
-gesture.debug = true;
+//gesture.debug = true;
 
 gesture.on('ready', function() {
     console.log("found a gesture sensor");
     gesture.setup(function() {
-        //setInterval(function() {
         gesture.readGesture();
-        //}, 500);
     });
 });
 
