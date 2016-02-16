@@ -17,7 +17,7 @@ gesture.on('ready', function() {
         var read = (function(g) {
             return g.readGesture;
         })(gesture);
-        setInterval(read, 200);
+        read();
     });
 });
 
