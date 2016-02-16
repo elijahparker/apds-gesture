@@ -16,7 +16,7 @@ gesture.on('ready', function() {
     gesture.setup(function() {
         setInterval(function() {
             gesture.readGesture();
-        }, 200);
+        }, 500);
     });
 });
 
