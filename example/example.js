@@ -14,7 +14,10 @@ gesture.debug = true;
 gesture.on('ready', function() {
     console.log("found a gesture sensor");
     gesture.setup(function() {
-        setInterval(gesture.readGesture, 200);
+        var read = (function(g) {
+            return g.readGesture;
+        })(gesture);
+        setInterval(read, 200);
     });
 });
 
