@@ -101,7 +101,7 @@ GestureSensor.prototype._readRegister = function(data, num, next) {
 };
 
 GestureSensor.prototype._writeRegister = function(data, next) {
-    this.i2c.writeBytes(data[0], [data[1]]), next);
+    this.i2c.writeBytes(data[0], [data[1]], next);
 };
 
 // set up gesture control
