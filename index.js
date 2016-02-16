@@ -92,6 +92,8 @@ function GestureSensor(dev) {
             self.emit('ready');
         }
     });
+
+    return self;
 }
 
 util.inherits(GestureSensor, events.EventEmitter);
