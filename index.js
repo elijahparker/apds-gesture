@@ -266,7 +266,7 @@ GestureSensor.prototype.readGesture = function() {
     q.clear();
     // check the status to see if there is anything
     self._readRegister([GSTATUS], 1, function(err, data) {
-        console.log("reading gstatus", data);
+        //console.log("reading gstatus", data);
         if (data[0] && 1) {
             var fifoLength = 0;
             // we have valid fifo data
