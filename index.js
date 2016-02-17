@@ -276,7 +276,6 @@ GestureSensor.prototype.readGesture = function() {
             q.place(function() {
                 self._readRegister([GFLVL], 1, function(err, data) {
                     fifoLength = data[0];
-                    if (fifoLength <= 4) return;
                     if (self.debug) {
                         //console.log("valid fifo length of", fifoLength);
                     }
@@ -304,6 +303,7 @@ GestureSensor.prototype.readGesture = function() {
                 if (self.debug) {
                     //console.log("processing: ", fifoLength);
                 }
+                if (fifoLength <= 4) return;
                 self.processGesture(fifoLength, function() {
                     //self.readGesture();
                 });
