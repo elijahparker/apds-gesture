@@ -6,8 +6,7 @@ var q = new Queue();
 
 var I2C_ADDR = 0x39,
     GESTURE_THRESHOLD_OUT = 10,
-    GESTURE_SENSITIVITY_UD = 0.5,
-    GESTURE_SENSITIVITY_LR = 0.2,
+    GESTURE_SENSITIVITY = 50,
     ENABLE = 0x80,
     ATIME = 0x81,
     WTIME = 0x83,
@@ -203,10 +202,10 @@ GestureSensor.prototype.processGesture = function(length, callback) {
     }
 
     // get the ratios
-    var ud_first = (self.fifoData['up'][start] - self.fifoData['down'][start]) / (self.fifoData['up'][start] + self.fifoData['down'][start]);
-    var lr_first = (self.fifoData['left'][start] - self.fifoData['right'][start]) / (self.fifoData['left'][start] + self.fifoData['right'][start]);
-    var ud_last = (self.fifoData['up'][end] - self.fifoData['down'][end]) / (self.fifoData['up'][end] + self.fifoData['down'][end]);
-    var lr_last = (self.fifoData['left'][end] - self.fifoData['right'][end]) / (self.fifoData['left'][end] + self.fifoData['right'][end]);
+    var ud_first = ((self.fifoData['up'][start] - self.fifoData['down'][start]) * 100) / (self.fifoData['up'][start] + self.fifoData['down'][start]);
+    var lr_first = ((self.fifoData['left'][start] - self.fifoData['right'][start]) * 100) / (self.fifoData['left'][start] + self.fifoData['right'][start]);
+    var ud_last = ((self.fifoData['up'][end] - self.fifoData['down'][end]) * 100) / (self.fifoData['up'][end] + self.fifoData['down'][end]);
+    var lr_last = ((self.fifoData['left'][end] - self.fifoData['right'][end]) * 100) / (self.fifoData['left'][end] + self.fifoData['right'][end]);
 
     // difference between ratios
     var ud_diff = ud_last - ud_first;
@@ -220,17 +219,20 @@ GestureSensor.prototype.processGesture = function(length, callback) {
         'left': 0
     };
 
-    if (self.gesture_ud_diff >= GESTURE_SENSITIVITY_UD) {
-        self.dir['up'] = -1;
-    } else if (self.gesture_ud_diff <= -GESTURE_SENSITIVITY_UD) {
+    if (self.gesture_ud_diff >= GESTURE_SENSITIVITY) {
         self.dir['up'] = 1;
+    } else if (self.gesture_ud_diff <= -GESTURE_SENSITIVITY) {
+        self.dir['up'] = -1;
+    } else {
+        self.dir['up'] = 0;
     }
 
-    if (self.gesture_lr_diff >= GESTURE_SENSITIVITY_LR) {
-        self.dir['left'] = -1;
-
-    } else if (self.gesture_lr_diff <= -GESTURE_SENSITIVITY_LR) {
+    if (self.gesture_lr_diff >= GESTURE_SENSITIVITY) {
         self.dir['left'] = 1;
+    } else if (self.gesture_lr_diff <= -GESTURE_SENSITIVITY) {
+        self.dir['left'] = -1;
+    } else {
+        self.dir['left'] = 0;
     }
 
     if (self.dir['up'] == -1 && self.dir['left'] == 0) {
@@ -309,7 +311,6 @@ exports.GestureSensor = GestureSensor;
 
 exports.use = function(hardware, opts) {
     GESTURE_THRESHOLD_OUT = opts.threshold ? opts.threshold : 20;
-    GESTURE_SENSITIVITY_UD = opts.sensitivity_ud ? opts.sensitivity_ud : 0.8;
-    GESTURE_SENSITIVITY_LR = opts.sensitivity_lr ? opts.sensitivity_lr : 0.8;
+    GESTURE_SENSITIVITY = opts.sensitivity ? opts.sensitivity : 50;
     return new GestureSensor(hardware);
 };
