@@ -6,7 +6,7 @@ var q = new Queue();
 
 var I2C_ADDR = 0x39,
     GESTURE_THRESHOLD_OUT = 10,
-    GESTURE_SENSITIVITY = 20 //0.5
+    GESTURE_SENSITIVITY = 0.5 //0.5
     ,
     ENABLE = 0x80,
     ATIME = 0x81,
