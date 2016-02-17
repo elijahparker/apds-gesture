@@ -160,7 +160,7 @@ GestureSensor.prototype.enable = function(callback) {
 
     // ppulse, set pulse count to 0x89, 16us length 10pulses
     q.place(function() {
-        self._writeRegister([WTIME, 0x89], q.next);
+        self._writeRegister([PPULSE, 0x89], q.next);
     });
 
     // enter gesture mode
