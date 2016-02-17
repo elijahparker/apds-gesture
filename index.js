@@ -5,8 +5,8 @@ var Wire = require('i2c');
 var q = new Queue();
 
 var I2C_ADDR = 0x39,
-    GESTURE_THRESHOLD_OUT = 20,
-    GESTURE_SENSITIVITY = 0.8 //0.5
+    GESTURE_THRESHOLD_OUT = 10,
+    GESTURE_SENSITIVITY = 50 //0.5
     ,
     ENABLE = 0x80,
     ATIME = 0x81,
