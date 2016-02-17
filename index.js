@@ -214,25 +214,23 @@ GestureSensor.prototype.processGesture = function(length, callback) {
     self.gesture_ud_diff = self.gesture_ud_diff + ud_diff;
     self.gesture_lr_diff = self.gesture_lr_diff + lr_diff;
 
+    console.log("lrd: ", self.gesture_lr_diff, " udd:", self.gesture_ud_diff);
+
     self.dir = {
         'up': 0,
         'left': 0
     };
 
     if (self.gesture_ud_diff >= GESTURE_SENSITIVITY) {
-        self.dir['up'] = 1;
-    } else if (self.gesture_ud_diff <= -GESTURE_SENSITIVITY) {
         self.dir['up'] = -1;
-    } else {
-        self.dir['up'] = 0;
+    } else if (self.gesture_ud_diff <= -GESTURE_SENSITIVITY) {
+        self.dir['up'] = 1;
     }
 
     if (self.gesture_lr_diff >= GESTURE_SENSITIVITY) {
-        self.dir['left'] = 1;
-    } else if (self.gesture_lr_diff <= -GESTURE_SENSITIVITY) {
         self.dir['left'] = -1;
-    } else {
-        self.dir['left'] = 0;
+    } else if (self.gesture_lr_diff <= -GESTURE_SENSITIVITY) {
+        self.dir['left'] = 1;
     }
 
     if (self.dir['up'] == -1 && self.dir['left'] == 0) {
