@@ -309,6 +309,7 @@ exports.GestureSensor = GestureSensor;
 
 exports.use = function(hardware, opts) {
     GESTURE_THRESHOLD_OUT = opts.threshold ? opts.threshold : 20;
-    GESTURE_SENSITIVITY = opts.sensitivity ? opts.sensitivity : 0.8;
+    GESTURE_SENSITIVITY_UD = opts.sensitivity_ud ? opts.sensitivity_ud : 0.8;
+    GESTURE_SENSITIVITY_LR = opts.sensitivity_lr ? opts.sensitivity_lr : 0.8;
     return new GestureSensor(hardware);
 };

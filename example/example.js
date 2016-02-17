@@ -6,7 +6,8 @@ var G_THRESHOLD = 10,
 
 var gesture = GestureLib.use('/dev/i2c-2', {
     'threshold': G_THRESHOLD,
-    'sensitivity': G_SENSITIVITY
+    'sensitivity_ud': G_SENSITIVITY_UD,
+    'sensitivity_lr': G_SENSITIVITY_LR
 });
 
 gesture.debug = true;
