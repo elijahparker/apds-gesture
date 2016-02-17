@@ -270,14 +270,14 @@ GestureSensor.prototype.readGesture = function() {
     // check the status to see if there is anything
     self._readRegister([GSTATUS], 1, function(err, data) {
         //console.log("reading gstatus", data);
-        if (data[0] && 1) {
+        if (data[0] & 1) {
             var fifoLength = 0;
             // we have valid fifo data
             q.place(function() {
                 self._readRegister([GFLVL], 1, function(err, data) {
                     fifoLength = data[0];
                     if (self.debug) {
-                        console.log("valid fifo length of", fifoLength);
+                        //console.log("valid fifo length of", fifoLength);
                     }
                     q.next();
                 })
@@ -286,7 +286,7 @@ GestureSensor.prototype.readGesture = function() {
             q.place(function() {
                 self._readRegister([GFIFO_U], fifoLength * 4, function(err, data) {
                     if (self.debug) {
-                        console.log("reading buffer");
+                        //console.log("reading buffer");
                     }
                     for (var i = 0; i < (fifoLength * 4); i = i + 4) {
                         self.fifoData['up'].push(data[i]);
@@ -301,7 +301,7 @@ GestureSensor.prototype.readGesture = function() {
             q.place(function() {
                 // restart the process
                 if (self.debug) {
-                    console.log("processing: ", fifoLength);
+                    //console.log("processing: ", fifoLength);
                 }
                 self.processGesture(fifoLength, function() {
                     //self.readGesture();
