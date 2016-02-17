@@ -295,11 +295,11 @@ GestureSensor.prototype.readGesture = function() {
             q.place(function() {
                 // restart the process
                 self.processGesture(fifoLength, function() {
-                    self.readGesture();
+                    //self.readGesture();
                 });
             });
         } else {
-            self.readGesture();
+            //self.readGesture();
         }
     })
 }
