@@ -248,6 +248,8 @@ GestureSensor.prototype.processGesture = function(length, callback) {
     } else if (self.dir['up'] == 0 && self.dir['left'] == 1) {
         self.resetGesture();
         self.emit('movement', 'left');
+    } else if (self.dir['up'] && self.dir['down']) {
+        self.resetGesture();
     }
 
     callback();
