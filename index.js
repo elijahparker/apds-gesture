@@ -177,7 +177,7 @@ GestureSensor.prototype.enable = function(callback) {
 
 GestureSensor.prototype.processGesture = function(length, callback) {
     var self = this;
-    var start = 0;
+    var start = -1;
     var end = 0;
 
     // get first and last values above threshold
@@ -186,13 +186,13 @@ GestureSensor.prototype.processGesture = function(length, callback) {
 
         if (self.fifoData['up'][i] > GESTURE_THRESHOLD_OUT && self.fifoData['down'][i] > GESTURE_THRESHOLD_OUT && self.fifoData['left'][i] > GESTURE_THRESHOLD_OUT && self.fifoData['right'][i] > GESTURE_THRESHOLD_OUT) {
 
-            if (start == 0) {
+            if (start == -1) {
                 start = i;
             }
 
-            if (i == (length - 1) || start != 0) {
-                end = i;
-            }
+            //if (i == (length - 1) || start != 0) {
+            end = i;
+            //}
         }
 
     }
