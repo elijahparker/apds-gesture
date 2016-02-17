@@ -297,8 +297,11 @@ GestureSensor.prototype.readGesture = function() {
 
             q.place(function() {
                 // restart the process
+                if (self.debug) {
+                    console.log("processing: ", fifoLength);
+                }
                 self.processGesture(fifoLength, function() {
-                    self.readGesture();
+                    //self.readGesture();
                 });
             });
         } else {
