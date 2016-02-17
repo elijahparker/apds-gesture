@@ -282,6 +282,9 @@ GestureSensor.prototype.readGesture = function() {
 
             q.place(function() {
                 self._readRegister([GFIFO_U], fifoLength * 4, function(err, data) {
+                    if (self.debug) {
+                        console.log("reading buffer");
+                    }
                     for (var i = 0; i < (fifoLength * 4); i = i + 4) {
                         self.fifoData['up'].push(data[i]);
                         self.fifoData['down'].push(data[i + 1]);
@@ -295,7 +298,7 @@ GestureSensor.prototype.readGesture = function() {
             q.place(function() {
                 // restart the process
                 self.processGesture(fifoLength, function() {
-                    //self.readGesture();
+                    self.readGesture();
                 });
             });
         } else {
