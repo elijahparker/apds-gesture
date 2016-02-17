@@ -196,8 +196,11 @@ GestureSensor.prototype.processGesture = function(length, callback) {
 
     }
 
-    if (start == 0 || end == 0) {
+    if (start == -1 || end == 0) {
         // if either is 0 then no values passed threshold
+        if (self.debug) {
+            console.log("no values passed threshold");
+        }
         return callback();
     }
 
