@@ -8,17 +8,19 @@ gesture.debug = true;
 
 gesture.on('ready', function() {
     console.log("found a gesture sensor");
-    //gesture.setup({}, function() {
-    //    gesture.start();
+    //gesture.setup(config, function() {
+    //    setInterval(function() {
+    //        gesture.readGesture();mf
+    //    }, 200);
     //});
 
-    //gesture.calibrate(function(err, status, calResults) {
-    //    if(calResults) {
-    //        gesture.start();
-    //    } else if(err) {
-    //        console.log("error calibrating: ", err);
-    //    }
-    //});
+    gesture.calibrate(function(err, status, calResults) {
+        if(calResults) {
+            gesture.start();
+        } else if(err) {
+            console.log("error calibrating: ", err);
+        }
+    });
 
 });
 

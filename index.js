@@ -194,7 +194,11 @@ GestureSensor.prototype.setup = function(config, callback) {
             val &= b('11111000');
             val |= time;
             
+<<<<<<< HEAD
             var gain = (config.gGain == null ? 2 : config.gGain) & b('00000011');
+=======
+            var gain = (config.gGain || 2) & b('00000011');
+>>>>>>> e2b1c0fe8ff6eb2bf31835ed7447724d51907880
             gain = gain << 5;
             val &= b('10011111');
             val |= gain;
