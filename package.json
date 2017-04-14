@@ -1,22 +1,23 @@
 {
-    "name": "apds-gesture",
-    "version": "0.0.1",
-    "description": "driver for the apds gesture controller ic",
-    "main": "index.js",
-    "directories": {
-        "example": "example"
-    },
-    "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1"
-    },
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/jiahuang/apds-gesture"
-    },
-    "author": "jiahuang",
-    "license": "MIT",
-    "dependencies": {
-        "sync-queue": "0.0.2",
-        "i2c": "latest"
-    }
+  "name": "apds-gesture",
+  "version": "0.0.1",
+  "description": "driver for the apds gesture controller ic",
+  "main": "index.js",
+  "directories": {
+    "example": "example"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jiahuang/apds-gesture"
+  },
+  "author": "jiahuang",
+  "license": "MIT",
+  "dependencies": {
+    "i2c-bus": "^1.2.1",
+    "mathjs": "^3.11.5",
+    "sync-queue": "0.0.2"
+  }
 }
