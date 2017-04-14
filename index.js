@@ -1,8 +1,9 @@
 var events = require('events');
 var util = require('util');
 var Queue = require('sync-queue')
-var Wire = require('i2c');
+var i2c = require('i2c-bus');
 var q = new Queue();
+var math = require('mathjs');
 
 var I2C_ADDR = 0x39,
     GESTURE_THRESHOLD_OUT = 10,
@@ -74,12 +75,13 @@ var ENABLE_GEN = 6 // gesture enable
     ENABLE_PON = 0 // Power on. 0 = low power state
 ;
 
-function GestureSensor(dev) {
-    this.dev = dev;
-    //this.i2c = this.hardware.I2C(I2C_ADDR);
-    this.i2c = new Wire(I2C_ADDR, {
-        device: this.dev
-    });
+function b(binary) {
+    return parseInt(binary, 2);
+}
+
+function GestureSensor(port) {
+    this.port = port;
+    this.i2c = i2c.openSync(this.port);
 
     var self = this;
     this._readRegister([ID], 1, function(err, data) {
@@ -87,6 +89,7 @@ function GestureSensor(dev) {
             self.emit('error', new Error('Cannot connect APDS Gesture sensor. Got id: ' + data[0].toString(16)));
         } else {
             self.fifoData = {};
+            self.ready = true;
 
             self.emit('ready');
         }
@@ -98,28 +101,76 @@ function GestureSensor(dev) {
 util.inherits(GestureSensor, events.EventEmitter);
 
 GestureSensor.prototype._readRegister = function(data, num, next) {
-    this.i2c.readBytes(data[0], num, next);
+    //console.log("reading bytes: ", num);
+    var result = new Buffer(0);
+    var self = this;
+    var read = function() {
+        var len = num;
+        if(len > 32) len = 32;
+        var buf = new Buffer(len);
+        try {
+            self.i2c.readI2cBlock(I2C_ADDR, data[0], len, buf, function(err, bytes, buf) {
+                result = Buffer.concat([result, buf]);
+                num -= bytes;
+                if(num > 0 && !err) {
+                    read();
+                } else {
+                    next && next(err, result);
+                }
+            });
+        } catch(e) {
+            next && next(e);
+        }
+    }
+    read();
 };
 
 GestureSensor.prototype._writeRegister = function(data, next) {
-    this.i2c.writeBytes(data[0], [data[1]], next);
+    try {
+        this.i2c.writeByte(I2C_ADDR, data[0], data[1], function(err) {
+            next && next(err);
+        });
+    } catch(e) {
+        next && next(e);
+    }
 };
 
 // set up gesture control
-GestureSensor.prototype.setup = function(callback) {
+GestureSensor.prototype.setup = function(config, callback) {
     var self = this;
+    this.stop();
+    if(!config) config = {};
+    GESTURE_THRESHOLD_OUT = config.threshold ? config.threshold : 20;
+    GESTURE_SENSITIVITY = config.sensitivity ? config.sensitivity : 50;
     // turns off everything. need to do this before changing control registers
     this._writeRegister([ENABLE, 0x00], function() {
         q.clear();
 
+        // set up offset
+        q.place(function() {
+            self._writeRegister([GOFFSET_U, config.gUOffset || 0], q.next);
+        });
+        // set down offset
+        q.place(function() {
+            self._writeRegister([GOFFSET_D, config.gDOffset || 0], q.next);
+        });
+        // set left offset
+        q.place(function() {
+            self._writeRegister([GOFFSET_L, config.gLOffset || 0], q.next);
+        });
+        // set right offset
+        q.place(function() {
+            self._writeRegister([GOFFSET_R, config.gROffset || 0], q.next);
+        });
+
         // set enter threshold
         q.place(function() {
-            self._writeRegister([GPENTH, 40], q.next);
+            self._writeRegister([GPENTH, config.gEnter == null ? 40 : config.gEnter], q.next);
         });
 
         // set exit threshold
         q.place(function() {
-            self._writeRegister([GEXTH, 30], q.next);
+            self._writeRegister([GEXTH, config.gExit == null ? 30 : config.gExit], q.next);
         });
 
         // set gconf1 (fifo threshold, exit mask, exit persistance)
@@ -133,7 +184,21 @@ GestureSensor.prototype.setup = function(callback) {
         // 4x gain = 2 [6:5]
         // 1000001 = 0x41
         q.place(function() {
-            self._writeRegister([GCONF2, 0x41], q.next);
+            var val = 0;
+            var drive = (config.gDrive || 0) & b('00000011');
+            drive = drive << 3;
+            val &= b('11100111');
+            val |= drive;
+
+            var time = (config.gWaitTime || 1) & b('00000111');
+            val &= b('11111000');
+            val |= time;
+            
+            var gain = (config.gGain == null ? 2 : config.gGain) & b('00000011');
+            gain = gain << 5;
+            val &= b('10011111');
+            val |= gain;
+            self._writeRegister([GCONF2, val], q.next); // 0x41
         });
 
         // set gpulse (pulse count & length)
@@ -174,14 +239,51 @@ GestureSensor.prototype.enable = function(callback) {
 
 }
 
+GestureSensor.prototype.disable = function(callback) {
+    var self = this;
+    q.clear();
+    q.place(function() {
+        self.resetGesture();
+        self._writeRegister([ENABLE, 0x00], callback);
+    });
+
+}
+
+GestureSensor.prototype.start = function(interval) {
+    if(this.intervalHandle) {
+        clearInterval(this.intervalHandle);
+        this.intervalHandle = null;
+    }
+    var self = this;
+    this.intervalHandle = setInterval(function() {
+        self.readGesture();
+    }, interval || 200);
+}
+
+GestureSensor.prototype.stop = function(interval) {
+    if(this.intervalHandle) {
+        clearInterval(this.intervalHandle);
+        this.intervalHandle = null;
+    }
+}
+
 GestureSensor.prototype.processGesture = function(length, callback) {
     var self = this;
     var start = -1;
     var end = 0;
 
+    var up = "", down = "", left = "", right = "";
+    for (var i = 0; i < length; i++) up += self.fifoData['up'][i] + ",";
+    for (var i = 0; i < length; i++) down += self.fifoData['down'][i] + ",";
+    for (var i = 0; i < length; i++) left += self.fifoData['left'][i] + ",";
+    for (var i = 0; i < length; i++) right += self.fifoData['right'][i] + ",";
+    console.log(up);
+    console.log(down);
+    console.log(left);
+    console.log(right);
+
     // get first and last values above threshold
     for (var i = 0; i < length; i++) {
-
 
         if (self.fifoData['up'][i] > GESTURE_THRESHOLD_OUT && self.fifoData['down'][i] > GESTURE_THRESHOLD_OUT && self.fifoData['left'][i] > GESTURE_THRESHOLD_OUT && self.fifoData['right'][i] > GESTURE_THRESHOLD_OUT) {
 
@@ -236,6 +338,22 @@ GestureSensor.prototype.processGesture = function(length, callback) {
         self.dir['left'] = 1;
     }
 
+    //console.log("self.dir", self.dir);
+
+    if(self.dir['up'] && self.dir['left']) {
+        var lr = Math.abs(self.gesture_lr_diff);
+        var ud = Math.abs(self.gesture_ud_diff);
+        if(Math.abs(lr - ud) >= GESTURE_SENSITIVITY) {
+            if(lr > ud) {
+                self.dir['up'] = 0;
+            } else {
+                self.dir['left'] = 0;
+            }
+        }
+    }
+
+    //console.log("self.dir", self.dir);
+
     if (self.dir['up'] == -1 && self.dir['left'] == 0) {
         self.resetGesture();
         self.emit('movement', 'down');
@@ -255,12 +373,136 @@ GestureSensor.prototype.processGesture = function(length, callback) {
     callback();
 }
 
+GestureSensor.prototype.calibrate = function(calConfig, statusCallback) {
+    if(typeof calConfig == 'function') {
+        statusCallback = calConfig;
+        calConfig = null;
+    }
+    var MAX_READ_GAIN = 200;
+    var MAX_READ_OFFSET = 3;
+    var MAX_STD = 5;
+    var THRES_DEF = 15;
+    var SENS_DEF = 10;
+    var CAL_READINGS = 5;
+    var MAX_ATTEMPTS_START = 20;
+    var MAX_ATTEMPTS_OFFSET = 100;
+    var MAX_ATTEMPTS_EMPTY = 100;
+
+    if(!calConfig) {
+        statusCallback && statusCallback(null, 'starting...');
+        calConfig = {
+            gDrive: 0,
+            gWaitTime: 1,
+            gGain: 2,
+            gUOffset: 0,
+            gDOffset: 0,
+            gLOffset: 0,
+            gROffset: 0,
+            threshold: 15,
+            sensitivity: 10,
+            gEnter: 0,
+            gExit: 0,
+            startAttempts: 0,
+            offsetAttempts: 0
+        }
+    }
+    var self = this;
+    this.setup(calConfig, function() {
+        var calBuf = {
+            u: [],
+            d: [],
+            l: [],
+            r: []
+        }
+        var getCalData = function() {
+            console.log("readGesture");
+            self.readGesture(function(up, down, left, right) {
+                if(up && down && left && right) {
+                    var stdMax = math.max(math.std(up), math.std(down), math.std(left), math.std(right));
+                    if(stdMax < MAX_STD) {
+                        calBuf.u.push(math.mean(up));
+                        calBuf.d.push(math.mean(down));
+                        calBuf.l.push(math.mean(left));
+                        calBuf.r.push(math.mean(right));
+                        if(calBuf.u.length >= CAL_READINGS) {
+                            var m = {
+                                u: math.mean(calBuf.u),
+                                d: math.mean(calBuf.d),
+                                l: math.mean(calBuf.l),
+                                r: math.mean(calBuf.r),
+                            }
+                            console.log(m.u, m.d, m.l, m.r);
+                            var maxVal = math.max(m.u, m.d, m.l, m.r);
+                            if(maxVal > MAX_READ_GAIN && calConfig.gGain > 0) {
+                                calConfig.gGain--;
+                                console.log("adjusting gain...");
+                                statusCallback && statusCallback(null, 'adjusting gain...');
+                                setTimeout(function(){self.calibrate(calConfig, statusCallback);}, 100);
+                            } else if(maxVal > MAX_READ_OFFSET) {
+                                if(m.u > MAX_READ_OFFSET) calConfig.gUOffset += Math.floor(math.max(1, m.u / 20)); //Math.floor(m.u / (Math.pow(2, calConfig.gGain) + 1));
+                                if(m.d > MAX_READ_OFFSET) calConfig.gDOffset += Math.floor(math.max(1, m.d / 20)); // = Math.floor(m.d / (Math.pow(2, calConfig.gGain) + 1));
+                                if(m.l > MAX_READ_OFFSET) calConfig.gLOffset += Math.floor(math.max(1, m.l / 20)); // = Math.floor(m.l / (Math.pow(2, calConfig.gGain) + 1));
+                                if(m.r > MAX_READ_OFFSET) calConfig.gROffset += Math.floor(math.max(1, m.r / 20)); // = Math.floor(m.r / (Math.pow(2, calConfig.gGain) + 1));
+                                console.log("adjusting offsets...");
+                                calConfig.startAttempts++;
+                                if(calConfig.startAttempts > MAX_ATTEMPTS_OFFSET) {
+                                    statusCallback && statusCallback('Error: failed to calibrate offsets', 'Err: calibration failed');
+                                } else {
+                                    statusCallback && statusCallback(null, 'adjusting offsets...');
+                                    setTimeout(function(){self.calibrate(calConfig, statusCallback);}, 100);
+                                }
+                            } else {
+                                delete calConfig.startAttempts;
+                                delete calConfig.offsetAttempts;
+                                calConfig.gEnter = 30;// * Math.pow(2, calConfig.gGain);
+                                calConfig.gExit = 20;// * Math.pow(2, calConfig.gGain);
+                                calConfig.threshold = THRES_DEF;//* Math.pow(2, calConfig.gGain);
+                                calConfig.sensitivity = SENS_DEF;// * Math.pow(2, calConfig.gGain);
+                                console.log("calibration results:", calConfig);
+                                self.setup(calConfig, function() {
+                                    statusCallback && statusCallback(null, 'done!', calConfig);
+                                });
+                            }
+                        } else {
+                            setTimeout(getCalData, 100);
+                        }
+                    } else {
+                        calBuf.u = [];
+                        calBuf.d = [];
+                        calBuf.l = [];
+                        calBuf.r = [];
+                        calConfig.startAttempts++;
+                        if(calConfig.startAttempts > MAX_ATTEMPTS_START) {
+                            statusCallback && statusCallback('Error: failed to acheive stable readings', 'Err: readings not stable');
+                        } else {
+                            statusCallback && statusCallback(null, 'reading...');
+                            setTimeout(getCalData, 100);
+                        }
+                    }
+                } else {
+                    calBuf.u = [];
+                    calBuf.d = [];
+                    calBuf.l = [];
+                    calBuf.r = [];
+                    calConfig.startAttempts++;
+                    if(calConfig.startAttempts > MAX_ATTEMPTS_EMPTY) {
+                        statusCallback && statusCallback('Error: failed to read sensor', 'Err: failed to read');
+                    } else {
+                        setTimeout(getCalData, 100);
+                    }
+                }
+            });
+        }
+        getCalData();
+    });
+}
+
 GestureSensor.prototype.resetGesture = function() {
     this.gesture_ud_diff = 0;
     this.gesture_lr_diff = 0;
 }
 
-GestureSensor.prototype.readGesture = function() {
+GestureSensor.prototype.readGesture = function(testCallback) {
     var self = this;
     self.fifoData = {};
     self.fifoData['up'] = [];
@@ -305,12 +547,21 @@ GestureSensor.prototype.readGesture = function() {
                 if (self.debug) {
                     //console.log("processing: ", fifoLength);
                 }
-                if (fifoLength <= 4) return;
-                self.processGesture(fifoLength, function() {
-                    //self.readGesture();
-                });
+                if (fifoLength <= 4) return testCallback && testCallback();
+                if(testCallback) {
+                    var up = self.fifoData['up'].slice(0, fifoLength);                
+                    var down = self.fifoData['down'].slice(0, fifoLength);                
+                    var left = self.fifoData['left'].slice(0, fifoLength);                
+                    var right = self.fifoData['right'].slice(0, fifoLength);                
+                    testCallback(up, down, left, right);
+                } else {
+                    self.processGesture(fifoLength, function() {
+                        //self.readGesture();
+                    });
+                }
             });
         } else {
+            testCallback && testCallback();
             //self.readGesture();
         }
     })
@@ -320,7 +571,5 @@ GestureSensor.prototype.readGesture = function() {
 exports.GestureSensor = GestureSensor;
 
 exports.use = function(hardware, opts) {
-    GESTURE_THRESHOLD_OUT = opts.threshold ? opts.threshold : 20;
-    GESTURE_SENSITIVITY = opts.sensitivity ? opts.sensitivity : 50;
     return new GestureSensor(hardware);
 };
