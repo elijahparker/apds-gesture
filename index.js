@@ -103,13 +103,17 @@ util.inherits(GestureSensor, events.EventEmitter);
 GestureSensor.prototype._readRegister = function(data, len, next) {
     var result = new Buffer(0);
     var self = this;
-    var buf = new Buffer(len);
     try {
         self.i2c.i2cWrite(I2C_ADDR, 1, new Buffer([data[0]]), function(err) {
             if(err) return next && next(err);
-            self.i2c.i2cRead(I2C_ADDR, len, buf, function(err, bytes, res) {
-                next && next(err, res);
-            });
+            try {
+                var buf = new Buffer(len);
+                self.i2c.i2cRead(I2C_ADDR, len, buf, function(err, bytes, res) {
+                    next && next(err, res);
+                });
+            } catch(e) {
+                next && next(e);
+            }
         });
     } catch(e) {
         next && next(e);
@@ -566,6 +570,7 @@ GestureSensor.prototype.resetGesture = function() {
 }
 
 GestureSensor.prototype.readGesture = function(testCallback) {
+    if(!this.reading && !testCallback) return;
     var self = this;
     self.fifoData = {};
     self.fifoData['up'] = [];
