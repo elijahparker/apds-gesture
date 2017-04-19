@@ -18,6 +18,7 @@
   "dependencies": {
     "i2c-bus": "^1.2.1",
     "mathjs": "^3.11.5",
+    "linux-gpio": "timelapseplus/node-linux-gpio",
     "sync-queue": "0.0.2"
   }
 }

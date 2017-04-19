@@ -8,11 +8,6 @@ gesture.debug = true;
 
 gesture.on('ready', function() {
     console.log("found a gesture sensor");
-    //gesture.setup(config, function() {
-    //    setInterval(function() {
-    //        gesture.readGesture();mf
-    //    }, 200);
-    //});
 
     gesture.calibrate(function(err, status, calResults) {
         if(calResults) {

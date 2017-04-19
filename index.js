@@ -4,6 +4,7 @@ var Queue = require('sync-queue')
 var i2c = require('i2c-bus');
 var q = new Queue();
 var math = require('mathjs');
+var gpio = require('linux-gpio');
 
 var I2C_ADDR = 0x39,
     GESTURE_THRESHOLD_OUT = 10,
@@ -79,9 +80,19 @@ function b(binary) {
     return parseInt(binary, 2);
 }
 
-function GestureSensor(port) {
+function GestureSensor(port, gpioPinRaw) {
     this.port = port;
     this.i2c = i2c.openSync(this.port);
+    var self = this;
+    if(gpioPinRaw != null) {
+        gpio.setup(gpioPinRaw, gpio.DIR_IN, function(err){
+            if(err) {
+                console.log("GPIO error: ", err); 
+            } else {
+                self.gpio = gpioPinRaw;
+            }
+        });
+    }
 
     var self = this;
     this._readRegister([ID], 1, function(err, data) {
@@ -101,6 +112,9 @@ function GestureSensor(port) {
 util.inherits(GestureSensor, events.EventEmitter);
 
 GestureSensor.prototype._readRegister = function(data, len, next) {
+    if(len < 1) {
+        return next && next("error: zero length requested");
+    }
     var result = new Buffer(0);
     var self = this;
     try {
@@ -445,7 +459,7 @@ GestureSensor.prototype.calibrate = function(calConfig, statusCallback) {
         statusCallback = calConfig;
         calConfig = null;
     }
-    var MAX_READ_GAIN = 200;
+    var MAX_READ_GAIN = 100;
     var MAX_READ_OFFSET = 3;
     var MAX_STD = 5;
     var THRES_DEF = 15;
@@ -579,23 +593,23 @@ GestureSensor.prototype.readGesture = function(testCallback) {
     self.fifoData['right'] = [];
 
     q.clear();
-    // check the status to see if there is anything
-    self._readRegister([GSTATUS], 1, function(err, data) {
-        //console.log("reading gstatus", data);
-        if (data[0] & 1) {
-            var fifoLength = 0;
-            // we have valid fifo data
-            q.place(function() {
-                self._readRegister([GFLVL], 1, function(err, data) {
-                    fifoLength = data[0];
-                    if (self.debug) {
-                        //console.log("valid fifo length of", fifoLength);
-                    }
-                    q.next();
-                })
-            })
 
-            q.place(function() {
+
+    var dataFound = function() {
+        var fifoLength = 0;
+        // we have valid fifo data
+        q.place(function() {
+            self._readRegister([GFLVL], 1, function(err, data) {
+                fifoLength = data[0];
+                if (self.debug) {
+                    //console.log("valid fifo length of", fifoLength);
+                }
+                q.next();
+            })
+        })
+
+        q.place(function() {
+            if(fifoLength > 0) {
                 self._readRegister([GFIFO_U], fifoLength * 4, function(err, data) {
                     if (self.debug) {
                         //console.log("reading buffer");
@@ -608,34 +622,56 @@ GestureSensor.prototype.readGesture = function(testCallback) {
                     }
                     q.next();
                 });
-            });
+            } else {
+                q.next();
+            }
+        });
 
-            q.place(function() {
-                // restart the process
-                if (self.debug) {
-                    //console.log("processing: ", fifoLength);
-                }
-                if (fifoLength <= 4) {
-                    if(self.reading) self.readGesture();
-                    return testCallback && testCallback();
-                }
-                if(testCallback) {
-                    var up = self.fifoData['up'].slice(0, fifoLength);                
-                    var down = self.fifoData['down'].slice(0, fifoLength);                
-                    var left = self.fifoData['left'].slice(0, fifoLength);                
-                    var right = self.fifoData['right'].slice(0, fifoLength);                
-                    testCallback(up, down, left, right);
-                } else {
-                    self.processGesture(fifoLength, function() {
-                        //self.readGesture();
-                    });
-                }
-            });
-        } else {
-            testCallback && testCallback();
-            if(self.reading) setTimeout(function(){self.readGesture();}, self.readInterval || 200);
-        }
-    });
+        q.place(function() {
+            // restart the process
+            if (self.debug) {
+                //console.log("processing: ", fifoLength);
+            }
+            if (fifoLength <= 4) {
+                if(self.reading) self.readGesture();
+                return testCallback && testCallback();
+            }
+            if(testCallback) {
+                var up = self.fifoData['up'].slice(0, fifoLength);                
+                var down = self.fifoData['down'].slice(0, fifoLength);                
+                var left = self.fifoData['left'].slice(0, fifoLength);                
+                var right = self.fifoData['right'].slice(0, fifoLength);                
+                testCallback(up, down, left, right);
+            } else {
+                self.processGesture(fifoLength, function() {
+                    //self.readGesture();
+                });
+            }
+        });
+    }
+
+    if(self.gpio) {
+        gpio.read(self.gpio, function(err, dataReady) {
+            if(dataReady) {
+                dataFound();
+            } else {
+                testCallback && testCallback();
+                if(self.reading) setTimeout(function(){self.readGesture();}, self.readInterval || 200);
+            }
+        });
+    } else {
+        // check the status to see if there is anything
+        self._readRegister([GSTATUS], 1, function(err, data) {
+            //console.log("reading gstatus", data);
+            if (data[0] & 1) {
+                dataFound();
+            } else {
+                testCallback && testCallback();
+                if(self.reading) setTimeout(function(){self.readGesture();}, self.readInterval || 200);
+            }
+        });
+    }
+
 }
 
 // exports
