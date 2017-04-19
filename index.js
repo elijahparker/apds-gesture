@@ -297,7 +297,7 @@ GestureSensor.prototype.disable = function(callback) {
 GestureSensor.prototype.start = function(interval) {
     if(!this.reading) {
         this.reading = true;
-        this.readInterval = interval || 200;
+        this.readInterval = interval || 300;
         this.readGesture();
     }
     //if(this.intervalHandle) {
@@ -443,11 +443,11 @@ GestureSensor.prototype.processGesture = function(length, callback) {
         if(self.reading) setTimeout(function(){
             self.resetGesture();
             self.readGesture();
-        }, self.readInterval || 200);
+        }, self.readInterval || 300);
     } else {
         if(self.reading) setTimeout(function(){
             self.readGesture();
-        }, self.readInterval || 200);
+        }, self.readInterval || 300);
     }
 
 
@@ -656,7 +656,7 @@ GestureSensor.prototype.readGesture = function(testCallback) {
                 dataFound();
             } else {
                 testCallback && testCallback();
-                if(self.reading) setTimeout(function(){self.readGesture();}, self.readInterval || 200);
+                if(self.reading) setTimeout(function(){self.readGesture();}, self.readInterval || 300);
             }
         });
     } else {
@@ -667,7 +667,7 @@ GestureSensor.prototype.readGesture = function(testCallback) {
                 dataFound();
             } else {
                 testCallback && testCallback();
-                if(self.reading) setTimeout(function(){self.readGesture();}, self.readInterval || 200);
+                if(self.reading) setTimeout(function(){self.readGesture();}, self.readInterval || 300);
             }
         });
     }
