@@ -85,6 +85,7 @@ function GestureSensor(port, gpioPinRaw) {
     this.i2c = i2c.openSync(this.port);
     var self = this;
     if(gpioPinRaw != null) {
+        gpio.setMode(gpio.MODE_RAW);
         gpio.setup(gpioPinRaw, gpio.DIR_IN, function(err){
             if(err) {
                 console.log("GPIO error (" + gpioPinRaw + "): ", err); 
