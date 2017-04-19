@@ -87,7 +87,7 @@ function GestureSensor(port, gpioPinRaw) {
     if(gpioPinRaw != null) {
         gpio.setup(gpioPinRaw, gpio.DIR_IN, function(err){
             if(err) {
-                console.log("GPIO error: ", err); 
+                console.log("GPIO error (" + gpioPinRaw + "): ", err); 
             } else {
                 console.log("GESTURE: using GPIO");
                 self.gpio = gpioPinRaw;
