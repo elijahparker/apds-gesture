@@ -652,8 +652,8 @@ GestureSensor.prototype.readGesture = function(testCallback) {
 
     if(self.gpio) {
         gpio.read(self.gpio, function(err, dataReady) {
-            console.log(dataReady);
-            if(dataReady) {
+            //console.log(dataReady);
+            if(!dataReady) {
                 if(self.debug) console.log("GESTURE: data ready via GPIO");
                 dataFound();
             } else {
