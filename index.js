@@ -677,6 +677,6 @@ GestureSensor.prototype.readGesture = function(testCallback) {
 // exports
 exports.GestureSensor = GestureSensor;
 
-exports.use = function(hardware, opts) {
-    return new GestureSensor(hardware);
+exports.use = function(i2cBus, gpioPinRaw) {
+    return new GestureSensor(i2cBus, gpioPinRaw);
 };
