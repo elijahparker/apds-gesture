@@ -89,6 +89,7 @@ function GestureSensor(port, gpioPinRaw) {
             if(err) {
                 console.log("GPIO error: ", err); 
             } else {
+                console.log("GESTURE: using GPIO");
                 self.gpio = gpioPinRaw;
             }
         });
