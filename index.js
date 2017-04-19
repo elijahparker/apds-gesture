@@ -586,16 +586,16 @@ GestureSensor.prototype.resetGesture = function() {
 GestureSensor.prototype.readGesture = function(testCallback) {
     if(!this.reading && !testCallback) return;
     var self = this;
-    self.fifoData = {};
-    self.fifoData['up'] = [];
-    self.fifoData['down'] = [];
-    self.fifoData['left'] = [];
-    self.fifoData['right'] = [];
-
-    q.clear();
-
 
     var dataFound = function() {
+        self.fifoData = {};
+        self.fifoData['up'] = [];
+        self.fifoData['down'] = [];
+        self.fifoData['left'] = [];
+        self.fifoData['right'] = [];
+
+        q.clear();
+
         var fifoLength = 0;
         // we have valid fifo data
         q.place(function() {
@@ -652,9 +652,7 @@ GestureSensor.prototype.readGesture = function(testCallback) {
 
     if(self.gpio) {
         gpio.read(self.gpio, function(err, dataReady) {
-            //console.log(dataReady);
             if(!dataReady) {
-                if(self.debug) console.log("GESTURE: data ready via GPIO");
                 dataFound();
             } else {
                 testCallback && testCallback();
