@@ -93,8 +93,6 @@ function GestureSensor(port, gpioPinRaw) {
             }
         });
     }
-
-    var self = this;
     this._readRegister([ID], 1, function(err, data) {
         if (data[0] != ID_RES) {
             self.emit('error', new Error('Cannot connect APDS Gesture sensor. Got id: ' + data[0].toString(16)));
