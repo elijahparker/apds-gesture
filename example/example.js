@@ -2,7 +2,7 @@
 var GestureLib = require('../');
 var I2C_PORT = 2;
 
-var gesture = GestureLib.use(I2C_PORT);
+var gesture = GestureLib.use(I2C_PORT, 72);
 
 gesture.debug = true;
 
