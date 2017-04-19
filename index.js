@@ -274,7 +274,7 @@ GestureSensor.prototype.enable = function(callback) {
 
     // enter gesture mode
     q.place(function() {
-        self._writeRegister([GCONF4, 0x01], q.next);
+        self._writeRegister([GCONF4, 0x02], q.next);
     });
 
     q.place(function() {
