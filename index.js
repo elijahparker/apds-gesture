@@ -96,7 +96,9 @@ function GestureSensor(port, gpioPinRaw) {
         });
     }
     this._readRegister([ID], 1, function(err, data) {
-        if (data[0] != ID_RES) {
+        if(!data) {
+            self.emit('error', new Error('Error reading I2C bus: " + err));
+        } else if (data[0] != ID_RES) {
             self.emit('error', new Error('Cannot connect APDS Gesture sensor. Got id: ' + data[0].toString(16)));
         } else {
             self.fifoData = {};
